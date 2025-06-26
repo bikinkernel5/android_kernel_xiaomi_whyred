@@ -37,7 +37,7 @@ jobs:
 
         mkdir -p out
         make O=out whyred_defconfig
-        make -j$(nproc) O=out KCFLAGS=-Wno-frame-larger-than=
+        make -j$(nproc) O=out KCFLAGS="-Wno-frame-larger-than=2048 -Wno-error=frame-larger-than="
 
     - name: Upload Image.gz-dtb
       uses: actions/upload-artifact@v4
