@@ -1,4 +1,4 @@
-name: Build Whyred Kernel and Pack to Flashable ZIP
+name: Build Whyred Kernel with GCC and Pack ZIP
 
 on:
   workflow_dispatch:
@@ -6,7 +6,6 @@ on:
 jobs:
   build:
     runs-on: ubuntu-latest
-    name: Build & Pack Kernel
 
     steps:
     - name: Checkout source
@@ -17,34 +16,30 @@ jobs:
         sudo apt update
         sudo apt install -y bc bison flex git make \
           libssl-dev libelf-dev libncurses-dev ccache \
-          gcc-aarch64-linux-gnu clang lld zip
+          gcc-aarch64-linux-gnu zip
 
-    - name: Cleanup all problematic flags from source
+    - name: Cleanup flags from all sources
       run: |
         find . -type f -name "*Makefile*" -exec sed -i \
           -e 's/-Werror//g' \
           -e 's/-implicit-function-declaration//g' \
-          -e 's/-Wno-error=frame-larger-than=/ -Wno-error=frame-larger-than/g' \
-          -e 's/=-unknown-warning-option//g' \
-          -e 's/ =unknown-warning-option//g' \
           {} \;
 
-    - name: Patch Makefile for frame warning
+    - name: Patch Makefile for warnings
       run: |
         echo 'KBUILD_CFLAGS := $(filter-out -Werror,$(KBUILD_CFLAGS))' >> Makefile
-        echo 'KBUILD_CFLAGS += -Wno-error=frame-larger-than' >> Makefile
 
-    - name: Build Kernel with Clang
+    - name: Build Kernel with GCC
       run: |
         mkdir -p out
         export ARCH=arm64
         export SUBARCH=arm64
         export CROSS_COMPILE=aarch64-linux-gnu-
-
+        
         make O=out whyred_defconfig
         make -j$(nproc) O=out \
-          HOSTCC=clang HOSTCXX=clang++ \
-          CC=clang LD=ld.lld V=1
+          HOSTCC=aarch64-linux-gnu-gcc HOSTCXX=aarch64-linux-gnu-g++ \
+          CC=aarch64-linux-gnu-gcc LD=ld
 
     - name: Upload Image.gz-dtb
       uses: actions/upload-artifact@v4
@@ -52,26 +47,17 @@ jobs:
         name: Image.gz-dtb
         path: out/arch/arm64/boot/Image.gz-dtb
 
-    - name: Clone AnyKernel3
+    - name: Package flashable ZIP
       run: |
         git clone https://github.com/osm0sis/AnyKernel3.git
         rm -rf AnyKernel3/.git
-
-    - name: Copy Image.gz-dtb to AnyKernel3
-      run: |
         cp out/arch/arm64/boot/Image.gz-dtb AnyKernel3/
-
-    - name: Configure AnyKernel3
-      run: |
         sed -i 's/^device.name1=.*/device.name1=whyred/' AnyKernel3/anykernel.sh
         sed -i 's/^supported.versions=.*/supported.versions=13/' AnyKernel3/anykernel.sh
-
-    - name: Create flashable zip
-      run: |
         cd AnyKernel3
         zip -r9 ../whyred_kernel_flashable.zip ./*
 
-    - name: Upload flashable zip
+    - name: Upload flashable ZIP
       uses: actions/upload-artifact@v4
       with:
         name: whyred_kernel_flashable.zip
