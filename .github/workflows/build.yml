@@ -19,7 +19,7 @@ jobs:
           libssl-dev libelf-dev libncurses-dev ccache \
           gcc-aarch64-linux-gnu clang lld
 
-    - name: Configure build variables
+    - name: Configure environment variables
       run: |
         echo "ARCH=arm64" >> $GITHUB_ENV
         echo "SUBARCH=arm64" >> $GITHUB_ENV
@@ -27,14 +27,19 @@ jobs:
         echo "CC=clang" >> $GITHUB_ENV
         echo "LD=ld.lld" >> $GITHUB_ENV
 
-    - name: Compile kernel
+    - name: Build Kernel
       run: |
-        make O=out defconfig
-        make -j$(nproc) O=out \
-          CC=clang \
-          LD=ld.lld
+        export ARCH=arm64
+        export SUBARCH=arm64
+        export CROSS_COMPILE=aarch64-linux-gnu-
+        export CC=clang
+        export LD=ld.lld
 
-    - name: Upload kernel image
+        make O=out whyred_defconfig
+        make O=out olddefconfig
+        make -j$(nproc) O=out
+
+    - name: Upload Image.gz-dtb
       uses: actions/upload-artifact@v4
       with:
         name: Image.gz-dtb
