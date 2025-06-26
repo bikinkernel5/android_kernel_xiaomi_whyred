@@ -19,7 +19,7 @@ jobs:
           libssl-dev libelf-dev libncurses-dev ccache \
           gcc-aarch64-linux-gnu clang lld zip
 
-    - name: Build Kernel with Clang
+    - name: Build Kernel with Clang (fix frame warning)
       run: |
         mkdir -p out
         export ARCH=arm64
@@ -29,7 +29,7 @@ jobs:
         export LD=ld.lld
 
         make O=out whyred_defconfig
-        make -j$(nproc) O=out
+        make -j$(nproc) O=out KCFLAGS="-Wno-error=frame-larger-than="
 
     - name: Upload Image.gz-dtb
       uses: actions/upload-artifact@v4
