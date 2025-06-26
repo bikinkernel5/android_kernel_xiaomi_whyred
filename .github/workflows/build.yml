@@ -17,19 +17,18 @@ jobs:
           sudo apt install -y bc bison build-essential curl flex git libssl-dev \
             libncurses-dev lzop ccache libelf-dev libtfm-dev python-is-python3
 
-      - name: Download Neutron Clang
+      - name: Set compiler PATH
         run: |
-          mkdir clang
-          curl -LO https://github.com/Neutron-Toolchains/clang-builds/releases/download/20230826/Neutron-LLVM-17.0.0.tar.gz
-          tar -xf Neutron-LLVM-17.0.0.tar.gz -C clang --strip-components=1
+          echo "ARCH=arm64" >> $GITHUB_ENV
+          echo "SUBARCH=arm64" >> $GITHUB_ENV
+          echo "CROSS_COMPILE=" >> $GITHUB_ENV
+          echo "CC=clang" >> $GITHUB_ENV
 
       - name: Compile kernel
         run: |
           export ARCH=arm64
           export SUBARCH=arm64
-          export PATH=$PWD/clang/bin:$PATH
-          export KBUILD_COMPILER_STRING="Neutron Clang 17.0.0"
-
+          export CC=clang
           make O=out whyred_defconfig
           make -j$(nproc) O=out
 
