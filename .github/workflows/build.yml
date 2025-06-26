@@ -27,6 +27,11 @@ jobs:
         echo "CC=clang" >> $GITHUB_ENV
         echo "LD=ld.lld" >> $GITHUB_ENV
 
+    - name: Copy custom defconfig
+      run: |
+        # Pastikan file defconfig kamu ada di root repo atau di folder tertentu
+        cp defconfig arch/arm64/configs/defconfig
+
     - name: Build Kernel
       run: |
         export ARCH=arm64
@@ -35,7 +40,7 @@ jobs:
         export CC=clang
         export LD=ld.lld
 
-        make O=out whyred_defconfig
+        make O=out defconfig
         make O=out olddefconfig
         make -j$(nproc) O=out
 
