@@ -24,7 +24,7 @@ jobs:
         find . -type f -name "*Makefile*" -exec sed -i \
           -e 's/-Werror//g' \
           -e 's/-implicit-function-declaration//g' \
-          -e 's/-Wno-error=frame-larger-than=/ -Wno-error=frame-larger-than/g' \
+          -e 's/-Wno-error=frame-larger-than=/ -Wno-error=frame-larger-than=2048/g' \
           -e 's/=-unknown-warning-option//g' \
           -e 's/ =unknown-warning-option//g' \
           {} \;
@@ -32,9 +32,9 @@ jobs:
     - name: Patch Makefile for frame warning
       run: |
         echo 'KBUILD_CFLAGS := $(filter-out -Werror,$(KBUILD_CFLAGS))' >> Makefile
-        echo 'KBUILD_CFLAGS += -Wno-error=frame-larger-than' >> Makefile
+        echo 'KBUILD_CFLAGS += -Wno-error=frame-larger-than=2048' >> Makefile
 
-    - name: Build Kernel with Correct Host Compiler
+    - name: Build Kernel with GCC
       run: |
         mkdir -p out
         export ARCH=arm64
