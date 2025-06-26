@@ -1,4 +1,4 @@
-name: Build Panda Kernel Whyred
+name: Build Kernel for Whyred Panda
 
 on:
   workflow_dispatch:
@@ -6,33 +6,37 @@ on:
 jobs:
   build:
     runs-on: ubuntu-latest
-    name: Compile Panda Kernel
+    name: Compile Kernel for Panda Kernel
     steps:
       - name: Checkout source
         uses: actions/checkout@v4
 
-      - name: Install dependencies
+      - name: Set up build environment
         run: |
           sudo apt update
           sudo apt install -y bc bison build-essential curl flex git libssl-dev \
-            libncurses-dev lzop ccache libelf-dev libtfm-dev python-is-python3
+            libncurses-dev lzop ccache libelf-dev libtfm-dev python-is-python3 \
+            ca-certificates xz-utils
 
-      - name: Set compiler PATH
+      - name: Download and extract clang toolchain
         run: |
-          echo "ARCH=arm64" >> $GITHUB_ENV
-          echo "SUBARCH=arm64" >> $GITHUB_ENV
-          echo "CROSS_COMPILE=" >> $GITHUB_ENV
-          echo "CC=clang" >> $GITHUB_ENV
+          mkdir clang
+          curl -LO https://github.com/Neutron-Toolchains/clang-builds/releases/download/Neutron-17/Neutron-CLANG-17.0.2.tar.gz
+          tar -xvzf Neutron-CLANG-17.0.2.tar.gz -C clang --strip-components=1
 
-      - name: Compile kernel
+      - name: Compile the kernel
         run: |
           export ARCH=arm64
           export SUBARCH=arm64
+          export PATH=$PWD/clang/bin:$PATH
+          export CROSS_COMPILE=aarch64-linux-gnu-
           export CC=clang
-          make O=out whyred_defconfig
+          export CLANG_TRIPLE=aarch64-linux-gnu-
+
+          make O=out defconfig
           make -j$(nproc) O=out
 
-      - name: Upload output
+      - name: Upload Kernel Image
         uses: actions/upload-artifact@v4
         with:
           name: Image.gz-dtb
