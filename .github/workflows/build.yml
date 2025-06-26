@@ -19,7 +19,7 @@ jobs:
           libssl-dev libelf-dev libncurses-dev ccache \
           gcc-aarch64-linux-gnu clang lld zip
 
-    - name: Setup environment
+    - name: Setup environment variables
       run: |
         echo "ARCH=arm64" >> $GITHUB_ENV
         echo "SUBARCH=arm64" >> $GITHUB_ENV
@@ -37,7 +37,7 @@ jobs:
 
         mkdir -p out
         make O=out whyred_defconfig
-        make -j$(nproc) O=out
+        make -j$(nproc) O=out KCFLAGS=-Wno-frame-larger-than=
 
     - name: Upload Image.gz-dtb
       uses: actions/upload-artifact@v4
