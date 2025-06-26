@@ -26,7 +26,12 @@ jobs:
         find . -type f \( -name "Makefile" -o -name "Kbuild" -o -name "Makefile.*" \) \
           -exec sed -i 's/-implicit-function-declaration//g' {} \;
 
-    - name: Patch Makefile for frame-larger-than warning
+    - name: Cleanup residual broken flags in source tree
+      run: |
+        find . -type f -name "*Makefile*" \
+          -exec sed -i 's/-Wno-error=frame-larger-than=/-Wno-error=frame-larger-than/g' {} \;
+
+    - name: Patch Makefile for warning fix
       run: |
         echo 'KBUILD_CFLAGS := $(filter-out -Werror,$(KBUILD_CFLAGS))' >> Makefile
         echo 'KBUILD_CFLAGS += -Wno-error=frame-larger-than' >> Makefile
