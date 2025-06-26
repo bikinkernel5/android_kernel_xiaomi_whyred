@@ -12,23 +12,26 @@ jobs:
       - name: Checkout source
         uses: actions/checkout@v4
 
-      - name: Install build tools
+      - name: Install dependencies
         run: |
           sudo apt update
-          sudo apt install -y clang bc bison build-essential curl flex git \
-            libssl-dev libncurses-dev lzop ccache libelf-dev libtfm-dev \
-            python-is-python3 ca-certificates xz-utils
+          sudo apt install -y clang lld llvm bc bison flex git make \
+            libssl-dev libncurses-dev lzop ccache libelf-dev xz-utils \
+            python-is-python3
 
-      - name: Compile the kernel
+      - name: Compile kernel with Clang/LLVM
         run: |
           export ARCH=arm64
           export SUBARCH=arm64
           export CC=clang
-          export CROSS_COMPILE=
+          export LLVM=1
+          export LLVM_IAS=1
+          export CLANG_TRIPLE=aarch64-linux-gnu-
+
           make O=out defconfig
           make -j$(nproc) O=out
 
-      - name: Upload Kernel Image
+      - name: Upload kernel image
         uses: actions/upload-artifact@v4
         with:
           name: Image.gz-dtb
