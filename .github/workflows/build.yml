@@ -6,46 +6,36 @@ on:
 jobs:
   build:
     runs-on: ubuntu-latest
-    name: Compile Kernel
+    name: Compile Panda Kernel
+
     steps:
-      - name: Checkout source
-        uses: actions/checkout@v4
+    - name: Checkout source
+      uses: actions/checkout@v4
 
-      - name: Install Dependencies
-        run: |
-          sudo apt update
-          sudo apt install -y bc bison flex git make \
-            libssl-dev libelf-dev libncurses-dev ccache \
-            gcc-aarch64-linux-gnu
+    - name: Install dependencies
+      run: |
+        sudo apt update
+        sudo apt install -y bc bison flex git make \
+          libssl-dev libelf-dev libncurses-dev ccache \
+          gcc-aarch64-linux-gnu clang lld
 
-      - name: Download Clang (Neutron)
-        run: |
-          mkdir clang
-          wget -q https://github.com/Neutron-Toolchains/clang-builds/releases/download/Neutron-17/Neutron-CLANG-17.0.2.tar.gz
-          tar -xzf Neutron-CLANG-17.0.2.tar.gz -C clang --strip-components=1
+    - name: Configure build variables
+      run: |
+        echo "ARCH=arm64" >> $GITHUB_ENV
+        echo "SUBARCH=arm64" >> $GITHUB_ENV
+        echo "CROSS_COMPILE=aarch64-linux-gnu-" >> $GITHUB_ENV
+        echo "CC=clang" >> $GITHUB_ENV
+        echo "LD=ld.lld" >> $GITHUB_ENV
 
-      - name: Compile Kernel
-        run: |
-          export ARCH=arm64
-          export SUBARCH=arm64
-          export KBUILD_BUILD_USER=bikinkernel5
-          export KBUILD_BUILD_HOST=github-ci
-          export CROSS_COMPILE=aarch64-linux-gnu-
-          export CC=clang
-          export PATH=$PWD/clang/bin:$PATH
+    - name: Compile kernel
+      run: |
+        make O=out defconfig
+        make -j$(nproc) O=out \
+          CC=clang \
+          LD=ld.lld
 
-          make O=out defconfig
-          make -j$(nproc) O=out \
-            CC=clang \
-            LD=ld.lld \
-            AR=llvm-ar \
-            NM=llvm-nm \
-            OBJCOPY=llvm-objcopy \
-            OBJDUMP=llvm-objdump \
-            STRIP=llvm-strip
-
-      - name: Upload zImage or Image.gz-dtb
-        uses: actions/upload-artifact@v4
-        with:
-          name: Kernel Output
-          path: out/arch/arm64/boot/
+    - name: Upload kernel image
+      uses: actions/upload-artifact@v4
+      with:
+        name: Image.gz-dtb
+        path: out/arch/arm64/boot/Image.gz-dtb
