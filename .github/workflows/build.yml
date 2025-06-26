@@ -1,0 +1,40 @@
+name: Build Panda Kernel Whyred
+
+on:
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    name: Compile Panda Kernel
+    steps:
+      - name: Checkout source
+        uses: actions/checkout@v4
+
+      - name: Set up dependencies
+        run: |
+          sudo apt update
+          sudo apt install -y bc bison build-essential curl flex git libssl-dev \
+            libncurses-dev lzop ccache libelf-dev libtfm-dev python-is-python3
+
+      - name: Download Clang Toolchain
+        run: |
+          mkdir clang
+          curl -LO https://releases.llvm.org/11.0.0/clang+llvm-11.0.0-x86_64-linux-gnu-ubuntu-16.04.tar.xz
+          tar -xf clang+llvm-11.0.0-x86_64-linux-gnu-ubuntu-16.04.tar.xz -C clang --strip-components=1
+
+      - name: Build Kernel
+        run: |
+          export ARCH=arm64
+          export SUBARCH=arm64
+          export PATH=$PWD/clang/bin:$PATH
+          export KBUILD_COMPILER_STRING="Clang 11.0.0"
+
+          make O=out whyred_defconfig
+          make -j$(nproc) O=out
+
+      - name: Upload Image
+        uses: actions/upload-artifact@v4
+        with:
+          name: Image.gz-dtb
+          path: out/arch/arm64/boot/Image.gz-dtb
