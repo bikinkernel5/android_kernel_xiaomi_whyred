@@ -19,17 +19,14 @@ jobs:
           libssl-dev libelf-dev libncurses-dev ccache \
           gcc-aarch64-linux-gnu clang lld zip
 
-    - name: Strip problematic flags from all build scripts
+    - name: Strip dangerous flags (-Werror, -implicit-function-declaration)
       run: |
-        # Hapus semua -Werror
         find . -type f \( -name "Makefile" -o -name "Kbuild" -o -name "Makefile.*" \) \
           -exec sed -i 's/-Werror//g' {} \;
-
-        # Hapus -implicit-function-declaration (flag clang error)
         find . -type f \( -name "Makefile" -o -name "Kbuild" -o -name "Makefile.*" \) \
           -exec sed -i 's/-implicit-function-declaration//g' {} \;
 
-    - name: Patch Makefile (fix final frame warn)
+    - name: Patch Makefile for frame-larger-than warning
       run: |
         echo 'KBUILD_CFLAGS := $(filter-out -Werror,$(KBUILD_CFLAGS))' >> Makefile
         echo 'KBUILD_CFLAGS += -Wno-error=frame-larger-than' >> Makefile
