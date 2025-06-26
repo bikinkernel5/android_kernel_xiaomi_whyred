@@ -19,12 +19,20 @@ jobs:
           libssl-dev libelf-dev libncurses-dev ccache \
           gcc-aarch64-linux-gnu clang lld zip
 
-    - name: Strip -Werror and -implicit-function-declaration globally
+    - name: Strip problematic flags from all build scripts
       run: |
+        # Hapus semua -Werror
         find . -type f \( -name "Makefile" -o -name "Kbuild" -o -name "Makefile.*" \) \
           -exec sed -i 's/-Werror//g' {} \;
+
+        # Hapus -implicit-function-declaration (flag clang error)
         find . -type f \( -name "Makefile" -o -name "Kbuild" -o -name "Makefile.*" \) \
           -exec sed -i 's/-implicit-function-declaration//g' {} \;
+
+    - name: Patch Makefile (fix final frame warn)
+      run: |
+        echo 'KBUILD_CFLAGS := $(filter-out -Werror,$(KBUILD_CFLAGS))' >> Makefile
+        echo 'KBUILD_CFLAGS += -Wno-error=frame-larger-than' >> Makefile
 
     - name: Build Kernel with Clang
       run: |
@@ -35,7 +43,7 @@ jobs:
 
         make O=out whyred_defconfig
         make -j$(nproc) O=out \
-          HOSTCC=gcc HOSTCXX=g++ \
+          HOSTCC=clang HOSTCXX=clang++ \
           CC=clang LD=ld.lld
 
     - name: Upload Image.gz-dtb
