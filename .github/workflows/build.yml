@@ -26,14 +26,23 @@ jobs:
         echo "CC=clang" >> $GITHUB_ENV
         echo "LD=ld.lld" >> $GITHUB_ENV
 
-    - name: Build Kernel with Clang/LLVM
+    - name: Build Kernel with LLVM Clang
       run: |
-        export ARCH=arm64
-        export SUBARCH=arm64
-
         mkdir -p out
+
         make O=out whyred_defconfig
-        make -j$(nproc) O=out LLVM=1 LLVM_IAS=1
+
+        make -j$(nproc) O=out \
+          ARCH=arm64 \
+          CROSS_COMPILE=llvm- \
+          CC=clang \
+          LD=ld.lld \
+          AR=llvm-ar \
+          NM=llvm-nm \
+          OBJCOPY=llvm-objcopy \
+          OBJDUMP=llvm-objdump \
+          STRIP=llvm-strip \
+          LLVM=1 LLVM_IAS=1 V=1
 
     - name: Upload Image.gz-dtb
       uses: actions/upload-artifact@v4
