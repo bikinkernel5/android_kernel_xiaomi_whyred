@@ -1,4 +1,4 @@
-name: Build Whyred Kernel with GCC and Pack ZIP
+name: Build Whyred Kernel with Clang 14 and Pack ZIP
 
 on:
   workflow_dispatch:
@@ -12,14 +12,17 @@ jobs:
     - name: Checkout source
       uses: actions/checkout@v4
 
-    - name: Install dependencies
+    - name: Install Clang 14 toolchain + deps
       run: |
         sudo apt update
-        sudo apt install -y bc bison flex git make \
-          libssl-dev libelf-dev libncurses-dev ccache \
-          gcc gcc-aarch64-linux-gnu zip
+        sudo apt install -y wget lsb-release gnupg software-properties-common
+        wget https://apt.llvm.org/llvm.sh
+        chmod +x llvm.sh
+        sudo ./llvm.sh 14
+        sudo apt install -y clang-14 lld-14 gcc-aarch64-linux-gnu bc bison flex \
+          libssl-dev libelf-dev libncurses-dev ccache zip
 
-    - name: Cleanup all problematic flags from source
+    - name: Cleanup all problematic flags
       run: |
         find . -type f -name "*Makefile*" -exec sed -i \
           -e 's/-Werror//g' \
@@ -34,17 +37,18 @@ jobs:
         echo 'KBUILD_CFLAGS := $(filter-out -Werror,$(KBUILD_CFLAGS))' >> Makefile
         echo 'KBUILD_CFLAGS += -Wno-error=frame-larger-than=2048' >> Makefile
 
-    - name: Build Kernel with GCC
+    - name: Build Kernel with Clang-14
       run: |
         mkdir -p out
         export ARCH=arm64
         export SUBARCH=arm64
         export CROSS_COMPILE=aarch64-linux-gnu-
+        export CC=clang-14
+        export HOSTCC=clang-14
+        export LD=ld.lld-14
 
         make O=out whyred_defconfig
-        make -j$(nproc) O=out \
-          HOSTCC=gcc HOSTCXX=g++ \
-          CC=aarch64-linux-gnu-gcc LD=ld
+        make -j$(nproc) O=out
 
     - name: Upload Image.gz-dtb
       uses: actions/upload-artifact@v4
