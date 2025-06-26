@@ -6,49 +6,42 @@ on:
 jobs:
   build:
     runs-on: ubuntu-latest
-    name: Build & Pack Kernel
 
     steps:
-    - name: Checkout source
-      uses: actions/checkout@v4
+    - uses: actions/checkout@v4
 
-    - name: Install dependencies
+    - name: Install deps
       run: |
         sudo apt update
         sudo apt install -y bc bison flex git make \
           libssl-dev libelf-dev libncurses-dev ccache \
           gcc-aarch64-linux-gnu clang lld zip
 
-    - name: Strip dangerous flags (-Werror, -implicit-function-declaration)
+    - name: Cleanup all bad flags early
       run: |
-        find . -type f \( -name "Makefile" -o -name "Kbuild" -o -name "Makefile.*" \) \
-          -exec sed -i 's/-Werror//g' {} \;
-        find . -type f \( -name "Makefile" -o -name "Kbuild" -o -name "Makefile.*" \) \
-          -exec sed -i 's/-implicit-function-declaration//g' {} \;
-
-    - name: Final cleanup broken flags from all files
-      run: |
-        find . -type f -exec sed -i \
+        find . -type f -name "*Makefile*" -exec sed -i \
+          -e 's/-Werror//g' \
+          -e 's/-implicit-function-declaration//g' \
           -e 's/-Wno-error=frame-larger-than=/ -Wno-error=frame-larger-than/g' \
           -e 's/=-unknown-warning-option//g' \
           {} \;
 
-    - name: Patch Makefile for frame-larger-than warning
+    - name: Patch main Makefile
       run: |
-        echo 'KBUILD_CFLAGS := $(filter-out -Werror,$(KBUILD_CFLAGS))' >> Makefile
         echo 'KBUILD_CFLAGS += -Wno-error=frame-larger-than' >> Makefile
 
-    - name: Build Kernel with Clang
+    - name: Show Kbuild includes (debug)
+      run: |
+        grep -R "frame-larger-than" -n .
+
+    - name: Build kernel with verbose logs
       run: |
         mkdir -p out
         export ARCH=arm64
         export SUBARCH=arm64
         export CROSS_COMPILE=aarch64-linux-gnu-
-
         make O=out whyred_defconfig
-        make -j$(nproc) O=out \
-          HOSTCC=clang HOSTCXX=clang++ \
-          CC=clang LD=ld.lld
+        make -j$(nproc) O=out HOSTCC=clang HOSTCXX=clang++ CC=clang LD=ld.lld V=1
 
     - name: Upload Image.gz-dtb
       uses: actions/upload-artifact@v4
@@ -56,22 +49,13 @@ jobs:
         name: Image.gz-dtb
         path: out/arch/arm64/boot/Image.gz-dtb
 
-    - name: Clone AnyKernel3
+    - name: Package flashable zip
       run: |
         git clone https://github.com/osm0sis/AnyKernel3.git
         rm -rf AnyKernel3/.git
-
-    - name: Copy Image.gz-dtb to AnyKernel3
-      run: |
         cp out/arch/arm64/boot/Image.gz-dtb AnyKernel3/
-
-    - name: Configure AnyKernel3
-      run: |
         sed -i 's/^device.name1=.*/device.name1=whyred/' AnyKernel3/anykernel.sh
         sed -i 's/^supported.versions=.*/supported.versions=13/' AnyKernel3/anykernel.sh
-
-    - name: Create flashable zip
-      run: |
         cd AnyKernel3
         zip -r9 ../whyred_kernel_flashable.zip ./*
 
