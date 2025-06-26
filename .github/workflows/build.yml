@@ -6,33 +6,46 @@ on:
 jobs:
   build:
     runs-on: ubuntu-latest
-    name: Compile Kernel for Panda
-
+    name: Compile Kernel
     steps:
       - name: Checkout source
         uses: actions/checkout@v4
 
-      - name: Install dependencies
+      - name: Install Dependencies
         run: |
           sudo apt update
-          sudo apt install -y clang lld llvm bc bison flex git make \
-            libssl-dev libncurses-dev lzop ccache libelf-dev xz-utils \
-            python-is-python3
+          sudo apt install -y bc bison flex git make \
+            libssl-dev libelf-dev libncurses-dev ccache \
+            gcc-aarch64-linux-gnu
 
-      - name: Compile kernel with Clang/LLVM
+      - name: Download Clang (Neutron)
+        run: |
+          mkdir clang
+          wget -q https://github.com/Neutron-Toolchains/clang-builds/releases/download/Neutron-17/Neutron-CLANG-17.0.2.tar.gz
+          tar -xzf Neutron-CLANG-17.0.2.tar.gz -C clang --strip-components=1
+
+      - name: Compile Kernel
         run: |
           export ARCH=arm64
           export SUBARCH=arm64
+          export KBUILD_BUILD_USER=bikinkernel5
+          export KBUILD_BUILD_HOST=github-ci
+          export CROSS_COMPILE=aarch64-linux-gnu-
           export CC=clang
-          export LLVM=1
-          export LLVM_IAS=1
-          export CLANG_TRIPLE=aarch64-linux-gnu-
+          export PATH=$PWD/clang/bin:$PATH
 
           make O=out defconfig
-          make -j$(nproc) O=out
+          make -j$(nproc) O=out \
+            CC=clang \
+            LD=ld.lld \
+            AR=llvm-ar \
+            NM=llvm-nm \
+            OBJCOPY=llvm-objcopy \
+            OBJDUMP=llvm-objdump \
+            STRIP=llvm-strip
 
-      - name: Upload kernel image
+      - name: Upload zImage or Image.gz-dtb
         uses: actions/upload-artifact@v4
         with:
-          name: Image.gz-dtb
-          path: out/arch/arm64/boot/Image.gz-dtb
+          name: Kernel Output
+          path: out/arch/arm64/boot/
