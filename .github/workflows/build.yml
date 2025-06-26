@@ -6,7 +6,7 @@ on:
 jobs:
   build:
     runs-on: ubuntu-latest
-    name: Compile Panda Kernel & Generate defconfig
+    name: Compile Panda Kernel & Generate Clean Defconfig
 
     steps:
     - name: Checkout source
@@ -27,12 +27,22 @@ jobs:
         echo "CC=clang" >> $GITHUB_ENV
         echo "LD=ld.lld" >> $GITHUB_ENV
 
-    - name: Copy your defconfig file
+    - name: Locate and copy your defconfig
       run: |
         mkdir -p arch/arm64/configs/
-        cp defconfig arch/arm64/configs/defconfig
 
-    - name: Generate .config and clean defconfig
+        if [ -f defconfig ]; then
+          cp defconfig arch/arm64/configs/defconfig
+          echo "✅ defconfig ditemukan di root repo."
+        elif [ -f configs/defconfig ]; then
+          cp configs/defconfig arch/arm64/configs/defconfig
+          echo "✅ defconfig ditemukan di folder configs/."
+        else
+          echo "❌ defconfig tidak ditemukan. Harap letakkan di root atau folder configs/."
+          exit 1
+        fi
+
+    - name: Generate .config and savedefconfig
       run: |
         export ARCH=arm64
         export SUBARCH=arm64
