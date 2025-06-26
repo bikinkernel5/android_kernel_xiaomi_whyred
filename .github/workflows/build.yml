@@ -19,10 +19,12 @@ jobs:
           libssl-dev libelf-dev libncurses-dev ccache \
           gcc-aarch64-linux-gnu clang lld zip
 
-    - name: Strip -Werror globally from all Makefiles
+    - name: Strip -Werror and -implicit-function-declaration globally
       run: |
         find . -type f \( -name "Makefile" -o -name "Kbuild" -o -name "Makefile.*" \) \
           -exec sed -i 's/-Werror//g' {} \;
+        find . -type f \( -name "Makefile" -o -name "Kbuild" -o -name "Makefile.*" \) \
+          -exec sed -i 's/-implicit-function-declaration//g' {} \;
 
     - name: Build Kernel with Clang
       run: |
@@ -33,7 +35,7 @@ jobs:
 
         make O=out whyred_defconfig
         make -j$(nproc) O=out \
-          HOSTCC=clang HOSTCXX=clang++ \
+          HOSTCC=gcc HOSTCXX=g++ \
           CC=clang LD=ld.lld
 
     - name: Upload Image.gz-dtb
