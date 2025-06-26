@@ -19,10 +19,13 @@ jobs:
           libssl-dev libelf-dev libncurses-dev ccache \
           gcc-aarch64-linux-gnu clang lld zip
 
-    - name: Patch Makefile to disable Werror
+    - name: Remove Wframe-larger-than flags from Kbuild
+      run: |
+        find . -name "Kbuild" -exec sed -i '/-Wframe-larger-than/d' {} \;
+
+    - name: Patch Makefile to remove Werror
       run: |
         echo 'KBUILD_CFLAGS := $(filter-out -Werror,$(KBUILD_CFLAGS))' >> Makefile
-        echo 'KBUILD_CFLAGS += -Wno-error=frame-larger-than=' >> Makefile
 
     - name: Build Kernel with Clang
       run: |
