@@ -17,32 +17,19 @@ jobs:
         sudo apt update
         sudo apt install -y bc bison flex git make \
           libssl-dev libelf-dev libncurses-dev ccache \
-          clang lld zip
+          gcc-aarch64-linux-gnu clang lld zip
 
-    - name: Setup environment variables
-      run: |
-        echo "ARCH=arm64" >> $GITHUB_ENV
-        echo "SUBARCH=arm64" >> $GITHUB_ENV
-        echo "CC=clang" >> $GITHUB_ENV
-        echo "LD=ld.lld" >> $GITHUB_ENV
-
-    - name: Build Kernel with LLVM Clang
+    - name: Build Kernel with Clang
       run: |
         mkdir -p out
+        export ARCH=arm64
+        export SUBARCH=arm64
+        export CROSS_COMPILE=aarch64-linux-gnu-
+        export CC=clang
+        export LD=ld.lld
 
         make O=out whyred_defconfig
-
-        make -j$(nproc) O=out \
-          ARCH=arm64 \
-          CROSS_COMPILE=llvm- \
-          CC=clang \
-          LD=ld.lld \
-          AR=llvm-ar \
-          NM=llvm-nm \
-          OBJCOPY=llvm-objcopy \
-          OBJDUMP=llvm-objdump \
-          STRIP=llvm-strip \
-          LLVM=1 LLVM_IAS=1 V=1
+        make -j$(nproc) O=out
 
     - name: Upload Image.gz-dtb
       uses: actions/upload-artifact@v4
