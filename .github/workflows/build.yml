@@ -1,4 +1,4 @@
-name: Build Kernel for Whyred Panda
+name: Build Whyred Kernel and Pack to Flashable ZIP
 
 on:
   workflow_dispatch:
@@ -6,7 +6,7 @@ on:
 jobs:
   build:
     runs-on: ubuntu-latest
-    name: Compile Panda Kernel & Generate Clean Defconfig
+    name: Build & Pack Kernel
 
     steps:
     - name: Checkout source
@@ -17,9 +17,9 @@ jobs:
         sudo apt update
         sudo apt install -y bc bison flex git make \
           libssl-dev libelf-dev libncurses-dev ccache \
-          gcc-aarch64-linux-gnu clang lld
+          gcc-aarch64-linux-gnu clang lld zip
 
-    - name: Configure environment variables
+    - name: Setup environment
       run: |
         echo "ARCH=arm64" >> $GITHUB_ENV
         echo "SUBARCH=arm64" >> $GITHUB_ENV
@@ -27,22 +27,7 @@ jobs:
         echo "CC=clang" >> $GITHUB_ENV
         echo "LD=ld.lld" >> $GITHUB_ENV
 
-    - name: Locate and copy your defconfig
-      run: |
-        mkdir -p arch/arm64/configs/
-
-        if [ -f defconfig ]; then
-          cp defconfig arch/arm64/configs/defconfig
-          echo "✅ defconfig ditemukan di root repo."
-        elif [ -f configs/defconfig ]; then
-          cp configs/defconfig arch/arm64/configs/defconfig
-          echo "✅ defconfig ditemukan di folder configs/."
-        else
-          echo "❌ defconfig tidak ditemukan. Harap letakkan di root atau folder configs/."
-          exit 1
-        fi
-
-    - name: Generate .config and savedefconfig
+    - name: Build Kernel
       run: |
         export ARCH=arm64
         export SUBARCH=arm64
@@ -51,12 +36,36 @@ jobs:
         export LD=ld.lld
 
         mkdir -p out
-        make O=out defconfig
-        make O=out olddefconfig
-        make O=out savedefconfig
+        make O=out whyred_defconfig
+        make -j$(nproc) O=out
 
-    - name: Upload whyred_defconfig
+    - name: Upload Image.gz-dtb
       uses: actions/upload-artifact@v4
       with:
-        name: whyred_defconfig
-        path: out/defconfig
+        name: Image.gz-dtb
+        path: out/arch/arm64/boot/Image.gz-dtb
+
+    - name: Clone AnyKernel3
+      run: |
+        git clone https://github.com/osm0sis/AnyKernel3.git
+        rm -rf AnyKernel3/.git
+
+    - name: Copy Image.gz-dtb to AnyKernel3
+      run: |
+        cp out/arch/arm64/boot/Image.gz-dtb AnyKernel3/
+
+    - name: Configure AnyKernel3
+      run: |
+        sed -i 's/^device.name1=.*/device.name1=whyred/' AnyKernel3/anykernel.sh
+        sed -i 's/^supported.versions=.*/supported.versions=13/' AnyKernel3/anykernel.sh
+
+    - name: Create flashable zip
+      run: |
+        cd AnyKernel3
+        zip -r9 ../whyred_kernel_flashable.zip ./*
+
+    - name: Upload flashable zip
+      uses: actions/upload-artifact@v4
+      with:
+        name: whyred_kernel_flashable.zip
+        path: whyred_kernel_flashable.zip
